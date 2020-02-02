@@ -1,8 +1,8 @@
 # env
 *.env
 
-# hidden
-.*
+# vscode
+.vscode/*
 
 # Binaries for programs and plugins
 *.exe
