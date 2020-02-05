@@ -1,4 +1,4 @@
-# Thead-Mail Posgres Store
+# Thead-Mail PostgreSQL Store
 
 ![Image of tmail postgres store entity relationship diagram](docs/erd.png)
 
