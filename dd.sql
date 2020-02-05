@@ -14,8 +14,8 @@ create table msg(
     to_addr       varchar(100),
     topic         varchar(100)    not null,
     type          varchar(100)    not null,
-    sha256        bytea           not null    unqiue,
-    psha256       bytea                       unique,
+    sha256        bytea           unique not null,
+    psha256       bytea,
     content       text            not null
 );
 
