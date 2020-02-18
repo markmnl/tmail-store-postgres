@@ -1,12 +1,11 @@
 package pgstore
 
 import (
-	"encoding/hex"
 	"fmt"
 	"log"
 	"github.com/markmnl/tmail-store/tstore/pkg"
 	"database/sql"
-	_ "github.com/lib/pq" // somehow used by database/sql..
+	"github.com/lib/pq"
 	"github.com/joho/godotenv"
 )
 
@@ -24,7 +23,7 @@ func acquireConn() *sql.DB {
 		log.Fatal(err)
 	}	
 
-	connStr := "" // defaults loaded from env
+	connStr := "" // https://www.postgresql.org/docs/current/libpq-envars.html
 	defaultDb, dbErr := sql.Open("postgres", connStr)
 	if dbErr != nil {
 		log.Fatal(dbErr)
@@ -32,15 +31,38 @@ func acquireConn() *sql.DB {
 	return defaultDb
 }
 
+func toNullString(s *string) sql.NullString {
+    if len(*s) == 0 {
+        return sql.NullString{}
+    }
+    return sql.NullString{
+         String: *s,
+         Valid: true,
+    }
+}
+
+// ParentExists queries database for existance of message with sha256 supplied
+func ParentExists(pSHA256 []byte) (bool, error) {
+	db := acquireConn()
+	exists := false
+
+	dbErr := db.QueryRow("select exists(select 1 from msg where sha256 = $1)", pSHA256).Scan(&exists)
+	if dbErr != nil {
+		return false, fmt.Errorf("Failed to query database: %w", dbErr)
+	}
+
+	return exists, nil
+}
+
 // Store stores message supplied in postgres db
 func Store(msg *tstore.Msg) error {
 
 	db := acquireConn()
 
-	sha456Hex := hex.EncodeToString(msg.ID[:])
-	psha256Hex := ""
-	if msg.PID64 != "" { // TODO better check..
-		psha256Hex = hex.EncodeToString(msg.PID[:])
+	id := msg.ID[:]
+	var pid []byte = nil
+	if msg.PID64 != "" {
+		pid = msg.PID[:]
 	}
 
 	_, dbErr := db.Exec(`insert into msg(ts
@@ -51,10 +73,16 @@ func Store(msg *tstore.Msg) error {
 			, sha256
 			, psha256
 			, content)
-		values ($1, $2, $3, $4, $5, $6, $7, $8)`, msg.Time, msg.From, msg.To, msg.Topic,
-		msg.Type, sha456Hex, psha256Hex, msg.Content)
+		values ($1, $2, $3, $4, $5, $6, $7, $8)`, msg.Time,
+			msg.From, 
+			(*pq.StringArray)(&msg.To),
+			msg.Topic,
+			msg.Type,
+			id, 
+			pid,
+			msg.Content)
 	if dbErr != nil {
-		return fmt.Errorf("Failed to store msg: %w", dbErr)
+		return fmt.Errorf("Database error: %w", dbErr)
 	}
 
 	// TODO attachments

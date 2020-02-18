@@ -11,14 +11,14 @@ create table msg(
     pid           bigint          references msg (id),        
     ts            bigint          not null,
     from_addr     varchar(100)    not null,
-    to_addr       varchar(100),
-    topic         varchar(100)    not null,
+    to_addr       varchar(100)[]  not null,
+    topic         varchar(100)    not null, 
     type          varchar(100)    not null,
     sha256        bytea           unique not null,
     psha256       bytea,
     content       text            not null
 );
-
+ 
 create table msg_attachment(
     msg_id        bigint          references msg (id),
     filename      varchar(255)    not null,
